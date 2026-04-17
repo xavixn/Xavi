@@ -1,0 +1,21 @@
+# Ortam değişkenleri - TOKEN burada, asla yükleme!
+bot/.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Log dosyaları
+*.log
