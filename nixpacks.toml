@@ -2,7 +2,7 @@
 nixPkgs = ["python312", "libsodium"]
 
 [phases.install]
-cmds = ["pip install -r bot/requirements.txt"]
+cmds = ["pip install -r requirements.txt"]
 
 [start]
 cmd = "cd bot && python main.py"
