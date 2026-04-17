@@ -48,6 +48,7 @@ async def on_ready():
                     await guild.voice_client.disconnect(force=True)
                     await asyncio.sleep(3)
                 vc = await kanal.connect(timeout=60, reconnect=False)
+                await asyncio.sleep(2)  # Bağlantının tam kurulmasını bekle
                 # Kendi kendini mute + deaf yap
                 await guild.change_voice_state(channel=kanal, self_mute=True, self_deaf=True)
                 print(f"✅ {guild.name} → '{kanal_adi}' ses kanalına bağlanıldı (mute+deaf).")
