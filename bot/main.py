@@ -18,7 +18,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # ─── Cog'ları Yükle ───────────────────────────────────────────────────────────
 async def load_cogs():
-    cogs = ["cogs.ticket", "cogs.stat", "cogs.unban", "cogs.restart", "cogs.cekilis", "cogs.clear", "cogs.jail", "cogs.rol", "cogs.ban"]
+    cogs = ["cogs.ticket", "cogs.stat", "cogs.unban", "cogs.restart", "cogs.cekilis", "cogs.clear", "cogs.jail", "cogs.rol", "cogs.ban", "cogs.untimeout"]
     for cog in cogs:
         try:
             await bot.load_extension(cog)
