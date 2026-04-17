@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["python312", "libsodium"]
+
+[phases.install]
+cmds = ["pip install -r bot/requirements.txt"]
+
+[start]
+cmd = "cd bot && python main.py"
