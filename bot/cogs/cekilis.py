@@ -3,7 +3,26 @@ from discord import app_commands
 from discord.ext import commands
 import asyncio
 import random
+import json
+import os
 from datetime import datetime, timezone, timedelta
+
+CEKILIS_DB = os.path.join(os.path.dirname(__file__), "..", "data", "cekilisler.json")
+
+
+def _load_cekilisler() -> dict:
+    if os.path.exists(CEKILIS_DB):
+        try:
+            with open(CEKILIS_DB, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def _save_cekilisler(data: dict):
+    with open(CEKILIS_DB, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 class Cekilis(commands.Cog):
@@ -11,6 +30,44 @@ class Cekilis(commands.Cog):
         self.bot = bot
         # Aktif çekilişleri tut: {message_id: task}
         self.aktif_cekilisler: dict[int, asyncio.Task] = {}
+
+    async def cog_load(self):
+        """Bot başlarken kayıtlı çekilişleri yeniden başlat."""
+        await self.bot.wait_until_ready()
+        await asyncio.sleep(2)  # Guild cache'in dolması için kısa bekle
+        cekilisler = _load_cekilisler()
+        for msg_id_str, veri in list(cekilisler.items()):
+            msg_id = int(msg_id_str)
+            bitis_ts = veri["bitis_timestamp"]
+            kalan = bitis_ts - int(discord.utils.utcnow().timestamp())
+
+            # Zaten bitmişse hemen bitir
+            if kalan <= 0:
+                kalan = 0
+
+            try:
+                kanal = self.bot.get_channel(veri["kanal_id"])
+                if kanal is None:
+                    kanal = await self.bot.fetch_channel(veri["kanal_id"])
+                msg = await kanal.fetch_message(msg_id)
+                baslatan = kanal.guild.get_member(veri["baslatan_id"])
+            except Exception:
+                cekilisler.pop(msg_id_str, None)
+                continue
+
+            task = asyncio.create_task(
+                self._cekilis_bitir(
+                    msg=msg,
+                    odul=veri["odul"],
+                    kazanan_sayisi=veri["kazanan_sayisi"],
+                    baslatan=baslatan,
+                    bitis_timestamp=bitis_ts,
+                    sure_saniye=kalan
+                )
+            )
+            self.aktif_cekilisler[msg_id] = task
+
+        _save_cekilisler(cekilisler)
 
     # ─── /cekilis komutu ──────────────────────────────────────────────────────
     @app_commands.command(name="cekilis", description="Yeni bir çekiliş başlatır.")
@@ -36,9 +93,9 @@ class Cekilis(commands.Cog):
                 "❌ Kazanan sayısı en az 1 olmalı.", ephemeral=True
             )
 
-        # Saati dakikaya çevir
-        sure_dakika = int(sure * 60)
-        bitis = discord.utils.utcnow() + timedelta(minutes=sure_dakika)
+        # Saniyeye çevir (float hassasiyetiyle)
+        sure_saniye = sure * 3600
+        bitis = discord.utils.utcnow() + timedelta(seconds=sure_saniye)
         bitis_timestamp = int(bitis.timestamp())
 
         embed = discord.Embed(
@@ -52,12 +109,23 @@ class Cekilis(commands.Cog):
             f"👤 **Başlatan:** {interaction.user.mention}\n"
             f"🗓️ **Bitiş Zamanı:** <t:{bitis_timestamp}:F> (<t:{bitis_timestamp}:R>)"
         )
-        embed.set_footer(text=f"Bitiş Zamanı: •")
+        embed.set_footer(text="Nova Bot | Çekiliş Sistemi")
         embed.set_thumbnail(url=interaction.guild.icon.url if interaction.guild.icon else None)
 
         await interaction.response.send_message("✅ Çekiliş başlatıldı!", ephemeral=True)
         msg = await interaction.channel.send(content="🎉 **Çekiliş Başladı!** 🎉", embed=embed)
         await msg.add_reaction("🎉")
+
+        # Çekilişi kaydet (bot restart'a karşı)
+        cekilisler = _load_cekilisler()
+        cekilisler[str(msg.id)] = {
+            "kanal_id": interaction.channel.id,
+            "odul": odul,
+            "kazanan_sayisi": kazanan_sayisi,
+            "baslatan_id": interaction.user.id,
+            "bitis_timestamp": bitis_timestamp
+        }
+        _save_cekilisler(cekilisler)
 
         # Zamanlayıcı başlat
         task = asyncio.create_task(
@@ -67,7 +135,7 @@ class Cekilis(commands.Cog):
                 kazanan_sayisi=kazanan_sayisi,
                 baslatan=interaction.user,
                 bitis_timestamp=bitis_timestamp,
-                sure_saniye=sure_dakika * 60
+                sure_saniye=sure_saniye
             )
         )
         self.aktif_cekilisler[msg.id] = task
@@ -78,16 +146,20 @@ class Cekilis(commands.Cog):
         msg: discord.Message,
         odul: str,
         kazanan_sayisi: int,
-        baslatan: discord.Member,
+        baslatan,
         bitis_timestamp: int,
-        sure_saniye: int
+        sure_saniye: float
     ):
-        await asyncio.sleep(sure_saniye)
+        try:
+            await asyncio.sleep(sure_saniye)
+        except asyncio.CancelledError:
+            return
 
         # Mesajı yenile
         try:
             msg = await msg.channel.fetch_message(msg.id)
         except discord.NotFound:
+            self._temizle(msg.id)
             return
 
         # 🎉 reaksiyonunu al
@@ -101,12 +173,10 @@ class Cekilis(commands.Cog):
 
         # Kazananları seç
         if len(katilimcilar) == 0:
-            kazananlar_str = "Kimse katılmadı 😔"
-            kazanan_mention = "Yok"
+            kazanan_mention = "Kimse katılmadı 😔"
         else:
             secilen = random.sample(katilimcilar, min(kazanan_sayisi, len(katilimcilar)))
-            kazananlar_str = ", ".join(u.mention for u in secilen)
-            kazanan_mention = kazananlar_str
+            kazanan_mention = ", ".join(u.mention for u in secilen)
 
         # Embed güncelle
         embed = discord.Embed(
@@ -114,23 +184,30 @@ class Cekilis(commands.Cog):
             color=0xFF4444,
             timestamp=discord.utils.utcnow()
         )
+        baslatan_mention = baslatan.mention if baslatan else "Bilinmiyor"
         embed.description = (
             f"🏆 **Kazanan(lar):** {kazanan_mention}\n"
-            f"👤 **Başlatan:** {baslatan.mention}\n"
+            f"👤 **Başlatan:** {baslatan_mention}\n"
             f"🗓️ **Bitiş Zamanı:** <t:{bitis_timestamp}:F>"
         )
-        embed.set_footer(text=f"Bitiş Zamanı: • {discord.utils.utcnow().strftime('%d.%m.%Y %H:%M')}")
+        embed.set_footer(text="Nova Bot | Çekiliş Sistemi")
         embed.set_thumbnail(url=msg.guild.icon.url if msg.guild.icon else None)
 
         await msg.edit(content="🎉 **Çekiliş Sona Erdi!** 🎉", embed=embed)
 
         if len(katilimcilar) > 0:
             await msg.channel.send(
-                f"🎊 Tebrikler {kazananlar_str}! **{odul}** ödülünü kazandınız!"
+                f"🎊 Tebrikler {kazanan_mention}! **{odul}** ödülünü kazandınız!"
             )
 
-        # Aktif listeden kaldır
-        self.aktif_cekilisler.pop(msg.id, None)
+        self._temizle(msg.id)
+
+    def _temizle(self, msg_id: int):
+        """Aktif listeden ve JSON'dan kaldır."""
+        self.aktif_cekilisler.pop(msg_id, None)
+        cekilisler = _load_cekilisler()
+        cekilisler.pop(str(msg_id), None)
+        _save_cekilisler(cekilisler)
 
     # ─── /cekilis-iptal komutu ────────────────────────────────────────────────
     @app_commands.command(name="cekilis-iptal", description="Aktif bir çekilişi iptal eder.")
@@ -150,7 +227,7 @@ class Cekilis(commands.Cog):
             )
 
         task.cancel()
-        self.aktif_cekilisler.pop(mid, None)
+        self._temizle(mid)
 
         try:
             msg = await interaction.channel.fetch_message(mid)

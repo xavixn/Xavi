@@ -88,7 +88,7 @@ class Jail(commands.Cog):
                         value=f"{rol.mention} (Pozisyon: {rol.position})",
                         inline=False
                     )
-                    embed.set_footer(text="303 Bot | Jail Sistemi")
+                    embed.set_footer(text="Nova Bot | Jail Sistemi")
                     await log_kanalı.send(embed=embed)
 
                 return  # İlk ihlalde kick yeterli

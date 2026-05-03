@@ -26,7 +26,7 @@ class Clear(commands.Cog):
             color=0x00FF88,
             timestamp=discord.utils.utcnow()
         )
-        embed.set_footer(text=f"İşlemi yapan: {interaction.user} | 303 Bot")
+        embed.set_footer(text=f"İşlemi yapan: {interaction.user} | Nova Bot")
 
         await interaction.followup.send(embed=embed, ephemeral=True)
 

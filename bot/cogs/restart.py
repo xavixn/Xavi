@@ -20,7 +20,7 @@ class Restart(commands.Cog):
             color=0xFFA500,
             timestamp=discord.utils.utcnow()
         )
-        embed.set_footer(text="303 Bot | Restart")
+        embed.set_footer(text="Nova Bot | Restart")
         await interaction.response.send_message(embed=embed)
 
         # Botu kapat ve yeni bir process olarak yeniden başlat

@@ -28,15 +28,31 @@ class TicketButonlari(discord.ui.View):
                 ephemeral=True
             )
 
-        # Önce response'u hemen kabul et (3 sn timeout'u aşmamak için)
-        await interaction.response.defer(ephemeral=False)
-
         # Butonun bulunduğu mesaj direkt interaction.message üzerinden gelir
         msg = interaction.message
         if not msg or not msg.embeds:
-            return await interaction.followup.send("❌ Embed bulunamadı.", ephemeral=True)
+            return await interaction.response.send_message("❌ Embed bulunamadı.", ephemeral=True)
 
         embed = msg.embeds[0]
+
+        # Daha önce sahiplenilmiş mi kontrol et
+        for field in embed.fields:
+            if field.name == "Durum" and "Sahiplendi" in field.value:
+                # Bu kişi zaten sahiplendiyse ona özel mesaj göster
+                if interaction.user.mention in field.value:
+                    return await interaction.response.send_message(
+                        "⚠️ Bu ticketi zaten sahiplendiniz!",
+                        ephemeral=True
+                    )
+                # Başka biri sahiplendiyse o kişiyi belirt
+                else:
+                    return await interaction.response.send_message(
+                        f"❌ Bu ticket zaten başka bir yetkili tarafından sahiplenildi.",
+                        ephemeral=True
+                    )
+
+        # Önce response'u hemen kabul et (3 sn timeout'u aşmamak için)
+        await interaction.response.defer(ephemeral=False)
 
         # Durum field'ını güncelle
         yeni_embed = discord.Embed(
@@ -118,6 +134,9 @@ class TicketButonlari(discord.ui.View):
 
 
 # ─── Ticket Kategori Dropdown ─────────────────────────────────────────────────
+_ticket_creating: set = set()  # Aynı anda birden fazla ticket açılmasını önler
+
+
 class TicketKategoriSelect(discord.ui.Select):
     def __init__(self):
         options = [
@@ -159,6 +178,14 @@ class TicketKategoriSelect(discord.ui.Select):
         guild = interaction.guild
         user = interaction.user
 
+        # Aynı kullanıcı zaten ticket açma sürecindeyse engelle
+        lock_key = (guild.id, user.id)
+        if lock_key in _ticket_creating:
+            return await interaction.response.send_message(
+                "⏳ Ticketin zaten oluşturuluyor, lütfen bekle.",
+                ephemeral=True
+            )
+
         # Zaten açık ticket var mı?
         kanal_adi = f"ticket-{user.name.lower()[:20]}"
         mevcut = discord.utils.get(guild.text_channels, name=kanal_adi)
@@ -167,6 +194,10 @@ class TicketKategoriSelect(discord.ui.Select):
                 f"❌ Zaten açık bir ticketin var: {mevcut.mention}",
                 ephemeral=True
             )
+
+        # Kilidi al ve hemen defer et
+        _ticket_creating.add(lock_key)
+        await interaction.response.defer(ephemeral=True)
 
         # İzinler
         overwrites = {
@@ -189,7 +220,8 @@ class TicketKategoriSelect(discord.ui.Select):
                 overwrites=overwrites
             )
         except discord.Forbidden:
-            return await interaction.response.send_message(
+            _ticket_creating.discard(lock_key)
+            return await interaction.followup.send(
                 "❌ Kanal oluşturma yetkim yok. Bot yetkilerini kontrol edin.",
                 ephemeral=True
             )
@@ -226,12 +258,15 @@ class TicketKategoriSelect(discord.ui.Select):
             value="🟡 - Yetkili Sahiplendi",
             inline=False
         )
-        embed.set_footer(text="303 Bot | Ticket Sistemi.")
+        embed.set_footer(text="Nova Bot | Ticket Sistemi.")
 
         view = TicketButonlari()
         await kanal.send(content=user.mention, embed=embed, view=view)
 
-        await interaction.response.send_message(
+        # Kilidi kaldır
+        _ticket_creating.discard(lock_key)
+
+        await interaction.followup.send(
             f"✅ Ticketin oluşturuldu: {kanal.mention}",
             ephemeral=True
         )
@@ -349,7 +384,7 @@ class Ticket(commands.Cog):
     async def ticket_panel(self, interaction: discord.Interaction):
         embed = discord.Embed(color=0x5865F2)
         embed.set_author(
-            name="303 | Destek Sistemi",
+            name="Nova Destek",
             icon_url=interaction.guild.icon.url if interaction.guild.icon else None
         )
         embed.title = "✨ Destek Sistemi"
@@ -360,7 +395,7 @@ class Ticket(commands.Cog):
             "**🔗 Sunucu Bilgisi:**\n"
             "Sunucumuzun kurallarını okumayı unutmayın."
         )
-        embed.set_footer(text="303 Bot | Ticket Sistemi.")
+        embed.set_footer(text="Nova Bot | Ticket Sistemi.")
 
         logo_path = os.path.join(os.path.dirname(__file__), "..", "assets", "logo.png")
         view = TicketPanelView()

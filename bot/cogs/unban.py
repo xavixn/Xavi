@@ -73,7 +73,7 @@ class Unban(commands.Cog):
             inline=True
         )
         embed.add_field(name="📝 Sebep", value=sebep, inline=False)
-        embed.set_footer(text="303 Bot | Unban Sistemi")
+        embed.set_footer(text="Nova Bot | Unban Sistemi")
 
         await interaction.response.send_message(embed=embed)
 

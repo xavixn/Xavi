@@ -60,7 +60,7 @@ class Rol(commands.Cog):
         embed.add_field(name="👤 Kullanıcı", value=kullanici.mention, inline=True)
         embed.add_field(name="🏷️ Rol", value=rol.mention, inline=True)
         embed.add_field(name="🛡️ İşlemi Yapan", value=interaction.user.mention, inline=True)
-        embed.set_footer(text="303 Bot | Rol Sistemi")
+        embed.set_footer(text="Nova Bot | Rol Sistemi")
         await interaction.response.send_message(embed=embed)
 
     @rol_ver.error
@@ -116,7 +116,7 @@ class Rol(commands.Cog):
         embed.add_field(name="👤 Kullanıcı", value=kullanici.mention, inline=True)
         embed.add_field(name="🏷️ Rol", value=rol.mention, inline=True)
         embed.add_field(name="🛡️ İşlemi Yapan", value=interaction.user.mention, inline=True)
-        embed.set_footer(text="303 Bot | Rol Sistemi")
+        embed.set_footer(text="Nova Bot | Rol Sistemi")
         await interaction.response.send_message(embed=embed)
 
     @rol_al.error

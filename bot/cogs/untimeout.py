@@ -47,7 +47,7 @@ class Untimeout(commands.Cog):
         embed.add_field(name="👤 Kullanıcı", value=f"{kullanici.mention} (`{kullanici.id}`)", inline=True)
         embed.add_field(name="🛡️ İşlemi Yapan", value=interaction.user.mention, inline=True)
         embed.add_field(name="📝 Sebep", value=sebep, inline=False)
-        embed.set_footer(text="303 Bot | Untimeout Sistemi")
+        embed.set_footer(text="Nova Bot | Untimeout Sistemi")
 
         await interaction.response.send_message(embed=embed)
 

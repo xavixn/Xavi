@@ -104,7 +104,7 @@ class Ban(commands.Cog):
             embed.add_field(name="📝 Sebep", value=sebep, inline=False)
             if sure > 0:
                 embed.add_field(name="🗑️ Mesaj Silme", value=f"Son {sure} günün mesajları silindi", inline=False)
-            embed.set_footer(text="303 Bot | Ban Sistemi")
+            embed.set_footer(text="Nova Bot | Ban Sistemi")
             return await interaction.response.send_message(embed=embed)
 
         # ── ID ile ban (sunucuda olmayan kullanıcı) ──────────────────────────
@@ -141,7 +141,7 @@ class Ban(commands.Cog):
         embed.add_field(name="📝 Sebep", value=sebep, inline=False)
         if sure > 0:
             embed.add_field(name="🗑️ Mesaj Silme", value=f"Son {sure} günün mesajları silindi", inline=False)
-        embed.set_footer(text="303 Bot | Ban Sistemi")
+        embed.set_footer(text="Nova Bot | Ban Sistemi")
         await interaction.response.send_message(embed=embed)
 
     @ban.error
