@@ -33,6 +33,12 @@ class Cekilis(commands.Cog):
 
     async def cog_load(self):
         """Bot başlarken kayıtlı çekilişleri yeniden başlat."""
+        # setup_hook içinde çalıştığı için wait_until_ready kullanamayız
+        # on_ready'de başlatmak için task oluşturuyoruz
+        asyncio.create_task(self._cekilisleri_yukle())
+
+    async def _cekilisleri_yukle(self):
+        """on_ready sonrası kayıtlı çekilişleri devam ettir."""
         await self.bot.wait_until_ready()
         await asyncio.sleep(2)  # Guild cache'in dolması için kısa bekle
         cekilisler = _load_cekilisler()
